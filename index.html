@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <meta name="screen-orientation" content="landscape">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="mobile-web-app-capable" content="yes">
+    <title>认知负荷实验（每个任务1分半）</title>
+    <style>
+        *{margin:0;padding:0;box-sizing:border-box;font-family:Arial,sans-serif}
+        body{background:#fff;color:#222;text-align:center;padding:30px 20px;min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center}
+        .stage{font-size:24px;font-weight:bold;margin-bottom:10px;color:#333}
+        .task{font-size:36px;font-weight:bold;margin:20px 0;color:#000}
+        .time{font-size:20px;color:#666;margin-bottom:20px}
+        .tip{font-size:16px;color:#888;margin-bottom:30px}
+        .btn{padding:14px 28px;margin:8px;font-size:18px;border:none;border-radius:10px;background:#007aff;color:#fff}
+        .btn:disabled{background:#ccc}
+    </style>
+</head>
+<body>
+
+<div class="stage" id="stage">准备开始</div>
+<div class="task" id="task">点击【开始】进入实验</div>
+<div class="time" id="time">00:00</div>
+<div class="tip">请勿移动身体，保持自然呼吸</div>
+
+<div>
+    <button class="btn" id="start">开始</button>
+    <button class="btn" id="pause">暂停</button>
+    <button class="btn" id="reset">重置</button>
+</div>
+
+<audio id="endSound" preload="auto">
+  <source src="data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj+a2/LDciUFLIHO8tiJNwgZaLvt559NEAxQp+PwtmMcBjiR1/LMeSwFJHfH8N2QQAoUXrTp66hVFApGn+DyvmImBze5u+wVRwASe7UAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=">
+</audio>
+
+<script>
+    const stage = document.getElementById('stage');
+    const task = document.getElementById('task');
+    const timeBox = document.getElementById('time');
+    const startBtn = document.getElementById('start');
+    const pauseBtn = document.getElementById('pause');
+    const resetBtn = document.getElementById('reset');
+    const endSound = document.getElementById('endSound');
+
+    // 每个任务 90 秒（1分半）
+    const BASE_TIME = 90;
+    const LOW_TIME = 90;
+    const HIGH_TIME = 90;
+
+    const lowNumbers = [5,8,2,7,1,4,9,6,3,0,5,8,2,7,1,4,9,6,3,0];
+    let timer = null;
+    let isRunning = false;
+    let phase = 0; // 0=基线 1=低负荷 2=高负荷
+    let currentSec = 0;
+    let numIndex = 0;
+
+    // 时间格式化 00:00
+    function formatTime(t) {
+        const m = Math.floor(t / 60).toString().padStart(2, '0');
+        const s = (t % 60).toString().padStart(2, '0');
+        return m + ':' + s;
+    }
+
+    // 显示基线界面
+    function showBase() {
+        stage.textContent = "基线静息阶段";
+        task.textContent = "放松静坐，不移动、不说话";
+        timeBox.textContent = "剩余时间：" + formatTime(BASE_TIME);
+    }
+
+    // 显示低负荷
+    function showLow() {
+        stage.textContent = "低认知负荷阶段";
+        task.textContent = "判断数字是否为偶数（不出声）";
+        timeBox.textContent = "剩余时间：" + formatTime(LOW_TIME);
+    }
+
+    // 显示高负荷
+    function showHigh() {
+        stage.textContent = "高认知负荷阶段";
+        task.textContent = "从 86 开始，心里连续减3 不停计算";
+        timeBox.textContent = "剩余时间：" + formatTime(HIGH_TIME);
+    }
+
+    // 实验结束
+    function showEnd() {
+        stage.textContent = "实验全部完成";
+        task.textContent = "请放松休息";
+        timeBox.textContent = "";
+        endSound.play();
+        stopTimer();
+    }
+
+    // 核心计时逻辑
+    function countDown() {
+        currentSec--;
+
+        if (phase === 0) {
+            timeBox.textContent = "剩余时间：" + formatTime(currentSec);
+            if (currentSec <= 0) {
+                phase = 1;
+                currentSec = LOW_TIME;
+                showLow();
+            }
+        } else if (phase === 1) {
+            timeBox.textContent = "剩余时间：" + formatTime(currentSec);
+            if (currentSec % 2 === 0) {
+                task.textContent = lowNumbers[numIndex % lowNumbers.length];
+                numIndex++;
+            }
+            if (currentSec <= 0) {
+                phase = 2;
+                currentSec = HIGH_TIME;
+                showHigh();
+            }
+        } else if (phase === 2) {
+            timeBox.textContent = "剩余时间：" + formatTime(currentSec);
+            if (currentSec <= 0) {
+                showEnd();
+            }
+        }
+    }
+
+    // 开始
+    function startTimer() {
+        if (isRunning) return;
+        isRunning = true;
+        startBtn.disabled = true;
+        timer = setInterval(countDown, 1000);
+    }
+
+    // 暂停
+    function stopTimer() {
+        clearInterval(timer);
+        isRunning = false;
+        startBtn.disabled = false;
+    }
+
+    // 重置
+    function resetTimer() {
+        stopTimer();
+        phase = 0;
+        currentSec = BASE_TIME;
+        numIndex = 0;
+        showBase();
+    }
+
+    // 绑定按钮
+    startBtn.onclick = startTimer;
+    pauseBtn.onclick = stopTimer;
+    resetBtn.onclick = resetTimer;
+
+    // 初始化
+    resetTimer();
+</script>
+</body>
+</html>
