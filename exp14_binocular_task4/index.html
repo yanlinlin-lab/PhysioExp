@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>模块四：字母竞争 | 双眼竞争实验</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; user-select: none; }
+        body {
+            font-family: 'Microsoft YaHei', 'Segoe UI', sans-serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+        .container {
+            max-width: 1100px;
+            width: 100%;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 20px;
+            backdrop-filter: blur(10px);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+            overflow: hidden;
+        }
+        .experiment-area { background: #000; display: flex; justify-content: center; align-items: center; min-height: 500px; background: linear-gradient(135deg, #000 0%, #111 100%); }
+        canvas { display: block; margin: 0 auto; box-shadow: 0 0 30px rgba(0, 0, 0, 0.5); }
+        .control-panel { padding: 20px; background: rgba(30, 30, 50, 0.95); border-top: 1px solid rgba(255, 255, 255, 0.1); }
+        .module-title { text-align: center; font-size: 22px; font-weight: bold; margin-bottom: 15px; color: #e74c3c; }
+        .timer-area { text-align: center; margin-bottom: 15px; }
+        .timer-clock { font-size: 48px; font-weight: bold; font-family: monospace; background: rgba(0,0,0,0.6); display: inline-block; padding: 10px 30px; border-radius: 50px; color: #e74c3c; }
+        .start-btn { background: #2ecc71; color: white; border: none; padding: 12px 40px; font-size: 18px; font-weight: bold; border-radius: 40px; cursor: pointer; margin: 10px 0; transition: all 0.3s; }
+        .start-btn:hover { transform: scale(1.05); background: #27ae60; }
+        .start-btn:disabled { background: #555; cursor: not-allowed; transform: none; }
+        .info-panel { background: rgba(0, 0, 0, 0.5); border-radius: 10px; padding: 15px; margin-top: 15px; }
+        .stats-row { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; margin-bottom: 10px; }
+        .stat-card { background: rgba(0,0,0,0.5); padding: 8px 15px; border-radius: 8px; text-align: center; }
+        .stat-label { font-size: 12px; color: #aaa; }
+        .stat-value { font-size: 20px; font-weight: bold; color: #ffaa66; }
+        .response-buttons { display: flex; gap: 15px; justify-content: center; margin: 15px 0; flex-wrap: wrap; }
+        .response-btn { padding: 10px 20px; font-size: 14px; font-weight: bold; border: none; border-radius: 10px; cursor: pointer; transition: all 0.2s; }
+        .response-btn.blue { background: #3498db; color: white; }
+        .response-btn.red { background: #e74c3c; color: white; }
+        .response-btn.mixed { background: #9b59b6; color: white; }
+        .response-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+        .key-hint { display: inline-block; background: rgba(0,0,0,0.6); padding: 2px 8px; border-radius: 6px; font-family: monospace; font-size: 12px; margin-left: 6px; }
+        .instruction { color: #ccc; font-size: 12px; text-align: center; padding: 8px; background: rgba(0, 0, 0, 0.3); border-radius: 8px; }
+        .status { color: #ffaa66; font-weight: bold; margin: 10px 0; font-size: 14px; text-align: center; }
+        .data-export { margin-top: 15px; padding-top: 15px; border-top: 1px solid rgba(255, 255, 255, 0.2); display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; }
+        .export-btn { padding: 8px 20px; background: #27ae60; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 13px; }
+        .reset-btn { background: #e67e22; }
+        .slider-group { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; justify-content: center; margin-bottom: 8px; }
+        .slider-group label { color: #ccc; font-size: 12px; width: 70px; }
+        input[type="range"] { width: 150px; height: 4px; -webkit-appearance: none; background: #555; border-radius: 2px; }
+        input[type="range"]::-webkit-slider-thumb { -webkit-appearance: none; width: 14px; height: 14px; border-radius: 50%; background: #e74c3c; cursor: pointer; }
+        .value-display { color: #ffaa66; font-size: 12px; width: 45px; }
+        @media (max-width: 768px) { .timer-clock { font-size: 36px; } .response-btn { padding: 6px 12px; font-size: 12px; } }
+    </style>
+</head>
+<body>
+<div class="container">
+    <div class="experiment-area"><canvas id="experimentCanvas" width="900" height="450"></canvas></div>
+    <div class="control-panel">
+        <div class="module-title">📝 模块四：字母竞争 | 蓝色 L vs 红色 R</div>
+        
+        <div class="timer-area">
+            <div class="timer-clock" id="timerClock">00:00</div>
+            <div><button class="start-btn" id="startBtn">▶ 开始实验 (60秒)</button></div>
+        </div>
+
+        <div style="background: rgba(0,0,0,0.4); border-radius: 10px; padding: 10px; margin-bottom: 10px;">
+            <div style="text-align:center; color:#aaa; font-size:12px;">🔧 变量调节 (实验开始前可调)</div>
+            <div class="slider-group"><label>左眼对比度:</label><input type="range" id="leftContrast" min="0" max="100" value="100"><span class="value-display" id="leftContrastVal">100%</span>
+            <label>右眼对比度:</label><input type="range" id="rightContrast" min="0" max="100" value="100"><span class="value-display" id="rightContrastVal">100%</span></div>
+            <div class="slider-group"><label>整体亮度:</label><input type="range" id="brightness" min="30" max="100" value="100"><span class="value-display" id="brightnessVal">100%</span></div>
+        </div>
+
+        <div class="info-panel">
+            <div class="stats-row">
+                <div class="stat-card"><div class="stat-label">切换次数</div><div class="stat-value" id="switchCount">0</div></div>
+                <div class="stat-card"><div class="stat-label">平均间隔</div><div class="stat-value" id="avgInterval">--</div></div>
+                <div class="stat-card"><div class="stat-label">最后按键</div><div class="stat-value" id="lastKey">--</div></div>
+            </div>
+            <div id="statusMessage" class="status">⚡ 点击"开始实验"后，按 F(蓝)、J(红)、空格(交替) 记录感知</div>
+            <div class="response-buttons">
+                <button class="response-btn blue" id="reportBlue" disabled>🔵 蓝色/左眼主导 <span class="key-hint">F</span></button>
+                <button class="response-btn red" id="reportRed" disabled>🔴 红色/右眼主导 <span class="key-hint">J</span></button>
+                <button class="response-btn mixed" id="reportMixed" disabled>🟣 冲突/融合/交替 <span class="key-hint">空格</span></button>
+            </div>
+            <div class="instruction">🎯 佩戴<strong style="color:#3498db;">左蓝右红</strong>眼镜 | 实验时长60秒，结束后自动弹出数据导出</div>
+            <div class="data-export">
+                <button class="export-btn" id="exportDataBtn" style="background:#3498db;">📥 导出实验数据</button>
+                <button class="export-btn reset-btn" id="resetDataBtn">🔄 重置数据</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    const canvas = document.getElementById('experimentCanvas');
+    const ctx = canvas.getContext('2d');
+    const CANVAS_W = 900, CANVAS_H = 450;
+
+    let isRunning = false;
+    let startTime = null;
+    let timerInterval = null;
+    let switchCount = 0;
+    let keyRecords = [];
+    let lastKeyTime = null;
+    let lastDominant = null;
+    
+    let leftContrast = 100, rightContrast = 100, brightness = 100;
+
+    function drawLetters() {
+        ctx.fillStyle = `rgba(0, 0, 0, ${1 - brightness/100})`;
+        ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
+        const centerX = CANVAS_W/2, centerY = CANVAS_H/2;
+        const blueIntensity = 255 * (leftContrast/100) * (brightness/100);
+        const redIntensity = 255 * (rightContrast/100) * (brightness/100);
+        ctx.font = 'bold 100px "Arial", "Microsoft YaHei"';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillStyle = `rgba(0, 0, ${Math.min(255, blueIntensity)}, 0.9)`;
+        ctx.fillText('L', centerX - 65, centerY);
+        ctx.fillStyle = `rgba(${Math.min(255, redIntensity)}, 0, 0, 0.9)`;
+        ctx.fillText('R', centerX + 65, centerY);
+        ctx.font = '13px "Microsoft YaHei"';
+        ctx.fillStyle = '#fff';
+        ctx.fillText('字母竞争 | 左眼：蓝色 L | 右眼：红色 R', 15, 30);
+    }
+
+    function animate() { drawLetters(); requestAnimationFrame(animate); }
+    animate();
+
+    function startExperiment() {
+        if (isRunning) return;
+        isRunning = true;
+        startTime = Date.now();
+        switchCount = 0;
+        keyRecords = [];
+        lastKeyTime = null;
+        lastDominant = null;
+        updateStatsDisplay();
+        document.getElementById('reportBlue').disabled = false;
+        document.getElementById('reportRed').disabled = false;
+        document.getElementById('reportMixed').disabled = false;
+        document.getElementById('startBtn').disabled = true;
+        updateStatus('🔴 实验进行中... 请根据感知按 F(蓝)、J(红)、空格(交替)', '#2ecc71');
+        timerInterval = setInterval(() => {
+            const elapsed = (Date.now() - startTime) / 1000;
+            const remaining = Math.max(0, 60 - elapsed);
+            const minutes = Math.floor(remaining / 60);
+            const seconds = Math.floor(remaining % 60);
+            document.getElementById('timerClock').innerText = `${minutes.toString().padStart(2,'0')}:${seconds.toString().padStart(2,'0')}`;
+            if (remaining <= 0) endExperiment();
+        }, 100);
+    }
+    
+    function endExperiment() {
+        if (!isRunning) return;
+        isRunning = false;
+        if (timerInterval) clearInterval(timerInterval);
+        document.getElementById('reportBlue').disabled = true;
+        document.getElementById('reportRed').disabled = true;
+        document.getElementById('reportMixed').disabled = true;
+        document.getElementById('startBtn').disabled = false;
+        updateStatus('✅ 实验结束！请点击"导出实验数据"保存结果', '#f1c40f');
+        setTimeout(() => { if (confirm(`实验完成！共记录 ${switchCount} 次感知切换。\n是否立即导出数据？`)) exportData(); }, 500);
+    }
+    
+    function recordKey(dominant, keyName) {
+        if (!isRunning) { updateStatus('⚠️ 请先点击"开始实验"', '#e74c3c'); return; }
+        const now = Date.now();
+        const relativeTime = (now - startTime) / 1000;
+        let interval = lastKeyTime ? ((now - lastKeyTime) / 1000).toFixed(3) : null;
+        keyRecords.push({time_sec: relativeTime.toFixed(3), key: keyName, dominant: dominant, interval_sec: interval});
+        switchCount++;
+        lastKeyTime = now;
+        lastDominant = dominant;
+        updateStatsDisplay();
+        let displayText = dominant === 'blue' ? '🔵 蓝色/左眼主导' : (dominant === 'red' ? '🔴 红色/右眼主导' : '🟣 冲突/交替');
+        updateStatus(`📝 ${displayText} | 时间: ${relativeTime.toFixed(1)}s | 切换次数: ${switchCount}`, '#ffaa66');
+    }
+    
+    function updateStatsDisplay() {
+        document.getElementById('switchCount').innerText = switchCount;
+        if (keyRecords.length >= 2) {
+            const intervals = keyRecords.slice(1).map(r => parseFloat(r.interval_sec)).filter(i => i !== null);
+            if (intervals.length > 0) {
+                const avg = (intervals.reduce((a,b) => a+b, 0) / intervals.length).toFixed(2);
+                document.getElementById('avgInterval').innerText = `${avg}s`;
+            }
+        }
+        if (lastDominant) document.getElementById('lastKey').innerText = lastDominant === 'blue' ? '蓝色' : (lastDominant === 'red' ? '红色' : '交替');
+    }
+    
+    function updateStatus(msg, color) { const div = document.getElementById('statusMessage'); div.innerHTML = msg; div.style.color = color; }
+    
+    function exportData() {
+        if (keyRecords.length === 0 && switchCount === 0) { alert('暂无数据'); return; }
+        const avgInterval = keyRecords.length >= 2 ? (keyRecords.slice(1).map(r => parseFloat(r.interval_sec)).filter(i => i !== null).reduce((a,b) => a+b,0)/(keyRecords.length-1)).toFixed(2) : 'N/A';
+        const headers = ['序号', '时间(秒)', '按键', '主导侧', '与前次间隔(秒)'];
+        const rows = keyRecords.map((r, idx) => [idx+1, r.time_sec, r.key, r.dominant === 'blue' ? '蓝色/左眼' : (r.dominant === 'red' ? '红色/右眼' : '冲突/交替'), r.interval_sec || '--']);
+        let csv = headers.join(',') + '\n' + rows.map(r => r.map(c => `"${c}"`).join(',')).join('\n');
+        const summary = `# 字母竞争实验数据\n# 实验时长: 60秒\n# 总切换次数: ${switchCount}\n# 平均间隔: ${avgInterval}秒\n# 左眼对比度: ${leftContrast}%\n# 右眼对比度: ${rightContrast}%\n# 亮度: ${brightness}%\n`;
+        const blob = new Blob(['\uFEFF' + summary + csv], { type: 'text/csv;charset=utf-8;' });
+        const link = document.createElement('a');
+        link.href = URL.createObjectURL(blob);
+        link.download = `字母竞争_实验数据_${new Date().toISOString().slice(0,19).replace(/:/g,'-')}.csv`;
+        link.click();
+        URL.revokeObjectURL(link);
+        updateStatus(`📥 数据已导出，共${switchCount}次记录`, '#2ecc71');
+    }
+    
+    function resetData() { if (isRunning) { alert('请先结束实验'); return; } if(confirm('确定重置？')) { switchCount=0; keyRecords=[]; lastKeyTime=null; lastDominant=null; updateStatsDisplay(); updateStatus('🔄 数据已重置','#ffaa66'); document.getElementById('timerClock').innerText='00:00'; } }
+    
+    document.getElementById('leftContrast').addEventListener('input', (e) => { leftContrast = parseInt(e.target.value); document.getElementById('leftContrastVal').innerText = leftContrast+'%'; });
+    document.getElementById('rightContrast').addEventListener('input', (e) => { rightContrast = parseInt(e.target.value); document.getElementById('rightContrastVal').innerText = rightContrast+'%'; });
+    document.getElementById('brightness').addEventListener('input', (e) => { brightness = parseInt(e.target.value); document.getElementById('brightnessVal').innerText = brightness+'%'; });
+    document.getElementById('startBtn').addEventListener('click', startExperiment);
+    document.getElementById('reportBlue').addEventListener('click', () => recordKey('blue', 'F'));
+    document.getElementById('reportRed').addEventListener('click', () => recordKey('red', 'J'));
+    document.getElementById('reportMixed').addEventListener('click', () => recordKey('mixed', 'SPACE'));
+    document.getElementById('exportDataBtn').addEventListener('click', exportData);
+    document.getElementById('resetDataBtn').addEventListener('click', resetData);
+    document.addEventListener('keydown', (e) => { const key = e.key.toLowerCase(); if (key === ' ') { e.preventDefault(); if (isRunning) recordKey('mixed', 'SPACE'); } else if (key === 'f') { e.preventDefault(); if (isRunning) recordKey('blue', 'F'); } else if (key === 'j') { e.preventDefault(); if (isRunning) recordKey('red', 'J'); } });
+    updateStatus('⚡ 点击"开始实验"，60秒内按 F(蓝)、J(红)、空格(交替) 记录感知', '#ffaa66');
+</script>
+</body>
+</html>
